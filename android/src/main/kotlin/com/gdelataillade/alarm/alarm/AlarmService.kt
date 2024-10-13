@@ -25,11 +25,93 @@ class AlarmService : Service() {
     private var vibrationService: VibrationService? = null
     private var volumeService: VolumeService? = null
     private var showSystemUI: Boolean = true
+    var settingsContentObserver: SettingsContentObserver? = null
+    var currentAlarmId: Int = -1;
+
+    private val receiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val action = intent.action
+            if(action == TelephonyManager.ACTION_PHONE_STATE_CHANGED || action == Intent.ACTION_SCREEN_ON || action == Intent.ACTION_SCREEN_OFF) {
+                if(currentAlarmId != -1 ){
+                    stopAlarm(currentAlarmId);
+                }
+            }
+        }
+    }
+    
 
     companion object {
         @JvmStatic
         var ringingAlarmIds: List<Int> = listOf()
     }
+
+    inner class SettingsContentObserver internal constructor(
+        var context: Context,
+        handler: Handler?
+    ) :
+        ContentObserver(handler) {
+        var previousVolume: Int;
+        var previousVolumRingTone: Int;
+        var currentAlarmId: Int = -1;
+
+        init {
+            val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            previousVolume =
+                Objects.requireNonNull(audio).getStreamVolume(AudioManager.STREAM_MUSIC)
+
+            previousVolumRingTone =
+                Objects.requireNonNull(audio).getStreamVolume(AudioManager.STREAM_RING)
+        }
+
+        fun setPlayingAlarmId(id:Int){
+            currentAlarmId = id;
+        }
+
+
+        override fun onChange(selfChange: Boolean) {
+            super.onChange(selfChange)
+            val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            var currentVolume =
+                Objects.requireNonNull(audio).getStreamVolume(AudioManager.STREAM_MUSIC)
+
+            var delta = previousVolume - currentVolume
+            if (delta > 0) {
+
+                previousVolume = currentVolume
+                // print("Volume Decrease")
+                if(this.currentAlarmId != -1){
+                    stopAlarm(this.currentAlarmId);
+                }
+            } else if (delta < 0) {
+                // print("Volume Increased")
+                previousVolume = currentVolume
+                if(this.currentAlarmId != -1){
+                    stopAlarm(this.currentAlarmId);
+                }
+            }
+            else{
+                 currentVolume =
+                    Objects.requireNonNull(audio).getStreamVolume(AudioManager.STREAM_RING)
+
+                 delta = previousVolumRingTone - currentVolume
+                if (delta > 0) {
+
+                    previousVolumRingTone = currentVolume
+                    // print("Volume Decrease")
+                    if(this.currentAlarmId != -1){
+                        stopAlarm(this.currentAlarmId);
+                    }
+                } else if (delta < 0) {
+                    // print("Volume Increased")
+                    previousVolumRingTone = currentVolume
+                    if(this.currentAlarmId != -1){
+                        stopAlarm(this.currentAlarmId);
+                    }
+                }
+            }
+        }
+    }
+    
 
     override fun onCreate() {
         super.onCreate()
@@ -37,6 +119,20 @@ class AlarmService : Service() {
         audioService = AudioService(this)
         vibrationService = VibrationService(this)
         volumeService = VolumeService(this)
+
+        settingsContentObserver = SettingsContentObserver(this, Handler(Looper.getMainLooper()))
+
+        val filter = IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED);
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+
+        registerReceiver(receiver, filter)
+
+        applicationContext.contentResolver.registerContentObserver(
+            Settings.System.CONTENT_URI,
+            true,
+            settingsContentObserver!!
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -106,7 +202,8 @@ class AlarmService : Service() {
             "method" to "ring"
         ))
 
-        if (volume >= 0.0 && volume <= 1.0) {
+        if(am.ringerMode != AudioManager.RINGER_MODE_SILENT){
+            if (volume >= 0.0 && volume <= 1.0) {
             volumeService?.setVolume(volume, showSystemUI)
         }
 
@@ -134,6 +231,14 @@ class AlarmService : Service() {
         wakeLock.acquire(5 * 60 * 1000L) // 5 minutes
 
         return START_STICKY
+        }
+         else{
+            Handler(Looper.getMainLooper()).postDelayed({
+                stopSelf();
+            }, 3000)
+
+            return START_NOT_STICKY;
+        }
     }
 
     fun unsaveAlarm(id: Int) {
