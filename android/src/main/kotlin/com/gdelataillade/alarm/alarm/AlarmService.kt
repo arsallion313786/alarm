@@ -212,6 +212,7 @@ class AlarmService : Service() {
             "method" to "ring"
         ))
 
+        val am = getSystemService(AUDIO_SERVICE) as AudioManager
         if(am.ringerMode != AudioManager.RINGER_MODE_SILENT){
             if (volume >= 0.0 && volume <= 1.0) {
             volumeService?.setVolume(volume, showSystemUI)
