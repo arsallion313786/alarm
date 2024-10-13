@@ -7,14 +7,23 @@ import com.gdelataillade.alarm.services.VolumeService
 import com.gdelataillade.alarm.models.NotificationSettings
 
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.app.PendingIntent
 import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.database.ContentObserver
+import android.media.AudioManager
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
+import android.provider.Settings
+import android.telephony.TelephonyManager
+import androidx.annotation.RequiresApi
 import android.os.Build
+import android.os.Handler
 import io.flutter.Log
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.embedding.engine.FlutterEngine
