@@ -152,6 +152,7 @@ class AlarmService : Service() {
         }
 
         val id = intent.getIntExtra("id", 0)
+         currentAlarmId = id;
         val action = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_ACTION)
 
         if (ringingAlarmIds.isNotEmpty()) {
@@ -228,6 +229,7 @@ class AlarmService : Service() {
             }
         }
 
+        settingsContentObserver?.setPlayingAlarmId(id);
         audioService?.playAudio(id, assetAudioPath!!, loopAudio!!, fadeDuration!!)
 
         ringingAlarmIds = audioService?.getPlayingMediaPlayersIds()!!
@@ -262,6 +264,7 @@ class AlarmService : Service() {
     }
 
     fun stopAlarm(id: Int) {
+         currentAlarmId = -1;
         try {
             val playingIds = audioService?.getPlayingMediaPlayersIds() ?: listOf()
             ringingAlarmIds = playingIds
@@ -298,6 +301,12 @@ class AlarmService : Service() {
 
         // Call the superclass method
         super.onDestroy()
+         this.settingsContentObserver?.let {
+            applicationContext.contentResolver.unregisterContentObserver(
+                it
+            )
+        };
+        unregisterReceiver(receiver)
     }
 
     override fun onBind(intent: Intent?): IBinder? {
