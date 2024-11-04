@@ -118,7 +118,7 @@ public class SwiftAlarmPlugin: NSObject, FlutterPlugin {
         warningNotificationOnKill = (args["warningNotificationOnKill"] as! Bool)
         if warningNotificationOnKill && !observerAdded {
             observerAdded = true
-            NotificationCenter.default.addObserver(self, selector: #selector(applicationWillTerminate(_:)), name: UIApplication.willTerminateNotification, object: nil)
+            //NotificationCenter.default.addObserver(self, selector: #selector(applicationWillTerminate(_:)), name: UIApplication.willTerminateNotification, object: nil)
         }
 
         if let audioPlayer = self.loadAudioPlayer(withAsset: alarmSettings.assetAudioPath, forId: id) {
